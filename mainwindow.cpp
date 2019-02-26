@@ -128,6 +128,7 @@ MainWindow::MainWindow(QWidget *parent)
         newDocument();
         codeEdit->setText(decrypt(encryptedCode));
         codeChanged();
+        path = filePath;
     }
 }
 
@@ -162,10 +163,18 @@ QString MainWindow::encrypt(const QString &plain)
     quint8 key = KEY;
     foreach (char i, data)
         res.append(key^i);
-    return tr(res.constData());
+    return tr(res.toBase64().constData());
 }
 QString MainWindow::decrypt(const QString &encrypted)
-{return encrypt(encrypted);}
+{
+    QByteArray data = qPrintable(encrypted);
+    data = QByteArray(QByteArray::fromBase64(data));
+    QByteArray res = "";
+    quint8 key = KEY;
+    foreach (char i, data)
+        res.append(key^i);
+    return tr(res.constData());
+}
 QString MainWindow::dir()
 {
     settings->beginGroup(tr("MainWindow"));
@@ -185,10 +194,17 @@ void MainWindow::newDocument()
 }
 bool MainWindow::openEncryptedFile()
 {
-    if (!saved && !saveEncryptedly())
-        return false;
+    if (!saved)
+    {
+        int res = QMessageBox::question(this,TRANSFER("保存"),TRANSFER("当前文档未保存，是否保存?"),
+                                        TRANSFER("保存"),TRANSFER("不保存"),TRANSFER("取消"));
+        if (res == 2)
+            return false;
+        if (res == 0 && !saveEncryptedly())
+            return false;
+    }
     QString filePath = QFileDialog::getOpenFileName(this,TRANSFER("打开文件"),
-                                                    dir(),tr("(*.sep) ; (*)"));
+                                                    dir(),tr("(*)"));
     if (filePath.isEmpty())
         return false;
     QFile file(filePath);
@@ -212,6 +228,8 @@ bool MainWindow::openEncryptedFile()
     newDocument();
     codeEdit->setText(decrypt(encryptedCode));
     codeChanged();
+    path = filePath;
+    setSaved(true);
     return true;
 }
 bool MainWindow::saveEncryptedly()
@@ -231,6 +249,7 @@ bool MainWindow::saveEncryptedly()
         QDataStream out(&file);
         out << (quint32)qHash(KEY) << encrypt(codeEdit->toPlainText());
         file.close();
+        setSaved(true);
         return true;
     }
     return saveAsEncryptedly();
@@ -248,6 +267,7 @@ bool MainWindow::saveAsEncryptedly()
         path = oldPath;
         return false;
     }
+    setSaved(true);
     return true;
 }
 bool MainWindow::closeCurrentDocument()
@@ -281,6 +301,7 @@ bool MainWindow::importPlainCode()
     file.close();
     codeEdit->setText(code);
     codeChanged();
+    setSaved(false);
     return true;
 }
 bool MainWindow::exportPlainCode()
