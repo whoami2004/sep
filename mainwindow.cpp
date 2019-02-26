@@ -392,11 +392,11 @@ void MainWindow::codeChanged()
         int start = 0;
         if (num>0)
         {
-            line = tr("<h%1>%2</h%3>")
+            line = tr("<h%1 style='margin: 0'>%2</h%3>")
                     .arg(num)
                     .arg(line.mid(num))
                     .arg(num);
-            start = 4;
+            start = 22;
         }
         if (line.mid(start,2) == "$$")
         {
